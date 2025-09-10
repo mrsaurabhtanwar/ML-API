@@ -7,6 +7,7 @@ import pickle
 import pandas as pd
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 # Configure logging
@@ -23,15 +24,27 @@ best_model = None
 async def lifespan(app: FastAPI):
     # Startup
     global best_model
+    start_time = time.time()
     try:
         model_path = os.getenv("MODEL_PATH", "student_model.pkl")
         logger.info(f"Loading model from {model_path}")
+        
+        # Check if model file exists
+        if not os.path.exists(model_path):
+            logger.error(f"Model file not found at {model_path}")
+            raise FileNotFoundError(f"Model file not found at {model_path}")
+        
         with open(model_path, 'rb') as f:
             best_model = pickle.load(f)
-        logger.info("Model loaded successfully")
+        
+        load_time = time.time() - start_time
+        logger.info(f"Model loaded successfully in {load_time:.2f} seconds")
+        
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
-        raise RuntimeError(f"Could not load model: {e}")
+        # Don't raise error on startup for Render free tier
+        # This allows the app to start even if model loading fails
+        best_model = None
     
     yield
     
@@ -230,7 +243,18 @@ def classify_activity(actions: float) -> str:
 # ---------------------------
 @app.get("/")
 def root():
-    return {"message": "Student Performance Analysis API - Ready to analyze learning patterns!"}
+    return {
+        "message": "Student Performance Analysis API - Ready to analyze learning patterns!",
+        "version": "1.0.0",
+        "status": "running",
+        "model_loaded": best_model is not None,
+        "endpoints": {
+            "predict": "/predict",
+            "analyze": "/analyze", 
+            "health": "/health",
+            "docs": "/docs"
+        }
+    }
 
 @app.post('/predict')
 def predicted_correctness(data: UserInput):
@@ -350,7 +374,12 @@ def analyze_student_behavior(data: UserInput):
 @app.get('/health')
 def health_check() -> dict[str, bool | str]:
     """Health check endpoint"""
-    return {"status": "healthy", "model_loaded": best_model is not None}
+    return {
+        "status": "healthy", 
+        "model_loaded": best_model is not None,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "version": "1.0.0"
+    }
 
 
 print("Routes defined")
