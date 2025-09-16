@@ -1,0 +1,23 @@
+name: student-performance-api
+region: oregon
+services:
+- name: api
+  type: web
+  env: python
+  buildCommand: pip install -r requirements.txt
+  # Option 1: Direct uvicorn (recommended)
+  startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1
+  # Option 2: Gunicorn with uvicorn worker (current)
+  # startCommand: gunicorn app:app -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -
+  # Option 3: Gunicorn with gevent worker
+  # startCommand: gunicorn app:app -w 1 -k gevent --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -
+  plan: starter
+  envVars:
+  - key: MODEL_PATH
+    value: student_model.pkl
+  - key: PYTHONUNBUFFERED
+    value: "1"
+  - key: PYTHONPATH
+    value: "."
+  - key: WORKERS
+    value: "1"

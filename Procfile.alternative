@@ -1,0 +1,13 @@
+# Alternative Procfile configurations for different deployment scenarios
+
+# Option 1: Direct uvicorn (recommended for ASGI)
+web: uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1
+
+# Option 2: Gunicorn with uvicorn worker (current approach)
+web: gunicorn app:app -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -
+
+# Option 3: Gunicorn with gevent worker (if ASGI doesn't work)
+web: gunicorn app:app -w 1 -k gevent --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -
+
+# Option 4: Using the WSGI wrapper (fallback)
+web: gunicorn wsgi:application -w 1 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -
